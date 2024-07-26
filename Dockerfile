@@ -8,6 +8,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SHELL=/bin/bash \
     PATH="/usr/local/cuda/bin:${PATH}"
 
+# Install required packages, including dos2unix
+RUN apt-get update && \
+    apt-get install -y dos2unix && \
+    apt-get clean
+
 # Install oobabooga
 ARG INDEX_URL
 ARG TORCH_VERSION
@@ -15,8 +20,12 @@ ARG OOBABOOGA_VERSION
 ENV INDEX_URL=${INDEX_URL}
 ENV TORCH_VERSION=${TORCH_VERSION}
 ENV OOBABOOGA_VERSION=${OOBABOOGA_VERSION}
-#COPY oobabooga/requirements* ./
+
+# Copy the install script and convert line endings
 COPY --chmod=755 build/install.sh /install.sh
+RUN dos2unix /install.sh
+
+# Run the install script
 RUN /install.sh && rm /install.sh
 
 # NGINX Proxy

@@ -20,3 +20,6 @@ fi
 
 echo "Starting Oobabooba Text Generation UI: ${ARGS[@]}"
 python3 server.py "${ARGS[@]}"
+
+echo "Starting xtts text to Speach"
+python -m xtts_api_server --deepspeed --listen
