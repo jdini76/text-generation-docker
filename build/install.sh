@@ -25,3 +25,9 @@ bash -c 'for req in extensions/*/requirements.txt ; do pip3 install -r "$req" ; 
 
 # Fix safetensors module broken by above exllama repository installation
 pip3 install -U safetensors>=0.4.1
+
+# Install xtts server
+apt install -y portaudio19-dev
+pip3 install xtts-api-server
+pip3 install torch==2.1.1+cu118 torchaudio==2.1.1+cu118 --index-url https://download.pytorch.org/whl/cu118
+
