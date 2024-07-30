@@ -2,10 +2,12 @@
 
 export PYTHONUNBUFFERED=1
 export APP="text-generation-webui"
-DOCKER_IMAGE_VERSION_FILE="/workspace/${APP}/docker_image_version"
+export XTTS_APP="xtts-api-server"
+DOCKER_IMAGE_VERSION_FILE="/workspace/docker_image_version"
 
 echo "Template version: ${TEMPLATE_VERSION}"
-echo "venv: ${VENV_PATH}"
+echo "ooba venv: ${OOBA_PATH}"
+echo "xtts venv: ${XTTS_PATH}"
 
 if [[ -e ${DOCKER_IMAGE_VERSION_FILE} ]]; then
     EXISTING_VERSION=$(cat ${DOCKER_IMAGE_VERSION_FILE})
@@ -22,28 +24,41 @@ sync_apps() {
     if [ -z "${DISABLE_SYNC}" ]; then
         # Sync venv to workspace to support Network volumes
         echo "Syncing venv to workspace, please wait..."
-        mkdir -p ${VENV_PATH}
-        rsync_with_progress --remove-source-files /venv/ ${VENV_PATH}/
+        mkdir -p ${OOBA_PATH}
+        rsync_with_progress --remove-source-files /venv/oobabooga ${OOBA_PATH}/
 
-        # Sync application to workspace to support Network volumes
+        # Sync text-generation-webui application to workspace to support Network volumes
         echo "Syncing ${APP} to workspace, please wait..."
         rsync_with_progress --remove-source-files /${APP}/ /workspace/${APP}/
 
+        # Sync xtts-api-server application to workspace to support Network volumes
+        echo "Syncing ${XTTS_APP} to workspace, please wait..."
+		mkdir -p ${XTTS_PATH}
+		rsync_with_progress --remove-source-files /venv/xtts ${XTTS_PATH}/
+		
+		# Sync xtts application to workspace to support Network volumes
+        echo "Syncing ${APP} to workspace, please wait..."
+        rsync_with_progress --remove-source-files /${XTTS_APP}/ /workspace/${XTTS_APP}/
+
         echo "${TEMPLATE_VERSION}" > ${DOCKER_IMAGE_VERSION_FILE}
-        echo "${VENV_PATH}" > "/workspace/${APP}/venv_path"
+        echo "${OOBA_PATH}" > "/workspace/${APP}/venv_path"
+        echo "${XTTS_PATH}" > "/workspace/${XTTS_APP}/venv_path"
     fi
 }
 
 fix_venvs() {
     # Fix the venv to make it work from VENV_PATH
-    echo "Fixing venv..."
-    /fix_venv.sh /venv ${VENV_PATH}
+    echo "Fixing venv for OOBA..."
+    /fix_venv.sh /venv/oobabooga ${OOBA_PATH}
+	
+	echo "Fixing venv for XTTS"
+	/fix_venv.sh /venv/xtts ${XTTS_PATH}
 }
 
 if [ "$(printf '%s\n' "$EXISTING_VERSION" "$TEMPLATE_VERSION" | sort -V | head -n 1)" = "$EXISTING_VERSION" ]; then
     if [ "$EXISTING_VERSION" != "$TEMPLATE_VERSION" ]; then
-        sync_apps
-        fix_venvs
+        #sync_apps
+        #fix_venvs
 
         # Create directories
         mkdir -p /workspace/logs /workspace/tmp
@@ -59,7 +74,7 @@ then
     if [[ ! -e "/workspace/text-gen-model" ]];
     then
         echo "Downloading model (${MODEL}), this could take some time, please wait..."
-        source /workspace/venv/bin/activate
+        source /venv/oobabooga/bin/activate
         /workspace/text-generation-webui/fetch_model.py "${MODEL}" /workspace/text-generation-webui/models >> /workspace/logs/download-model.log 2>&1
         deactivate
     fi
@@ -77,7 +92,7 @@ else
 
     if [[ ${UI_ARGS} ]];
     then
-    	  ARGS=("${ARGS[@]}" ${UI_ARGS})
+        ARGS=("${ARGS[@]}" ${UI_ARGS})
     fi
 
     if [[ ${HF_TOKEN} ]];
@@ -86,10 +101,20 @@ else
     fi
 
     echo "Starting Oobabooga Text Generation Web UI"
-    cd /workspace/text-generation-webui
+	source ${OOBA_PATH}/bin/activate
+    cd /text-generation-webui
     nohup ./start_textgen_server.sh "${ARGS[@]}" > /workspace/logs/textgen.log 2>&1 &
     echo "Oobabooga Text Generation Web UI started"
     echo "Log file: /workspace/logs/textgen.log"
+	deactivate
 fi
 
+# Start XTTS API Server
+echo "Starting XTTS API Server"
+source ${XTTS_PATH}/bin/activate
+cd /xtts-api-server
+nohup ./start_xtts_server.sh > /workspace/logs/xtts.log 2>&1 &
+echo "XTTS API Server started"
+echo "Log file: /workspace/logs/xtts.log"
+deactivate
 echo "All services have been started"

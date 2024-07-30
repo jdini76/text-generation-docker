@@ -2,14 +2,13 @@
 
 ARGS=("$@" --listen --api --listen-port 3001 --api-port 5001 --extensions api --trust-remote-code)
 
-if [[ -f /workspace/text-gen-model ]];
+if [[ -f /text-gen-model ]];
 then
-  ARGS=("${ARGS[@]}" --model "$(</workspace/text-gen-model)")
+  ARGS=("${ARGS[@]}" --model "$(</text-gen-model)")
 fi
 
-VENV_PATH=$(cat /workspace/text-generation-webui/venv_path)
-source ${VENV_PATH}/bin/activate
-cd /workspace/text-generation-webui
+source ${OOBA_PATH}/bin/activate
+cd /text-generation-webui
 export PYTHONUNBUFFERED=1
 export HF_HOME="/workspace"
 
